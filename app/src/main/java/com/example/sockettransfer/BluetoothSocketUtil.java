@@ -35,6 +35,7 @@ public class BluetoothSocketUtil {
     private Context context;
     private BluetoothAdapter bluetoothAdapter;
     private BluetoothSocket bluetoothSocket;
+    private BluetoothServerSocket bluetoothServerSocket;
     public BluetoothDevice nowDevice;
     private InputStream inputStream;
     private OutputStream outputStream;
@@ -44,7 +45,6 @@ public class BluetoothSocketUtil {
     private ListenThread listenThread;
 
     private final UUID MY_UUID = UUID.fromString("550e8400-e29b-41d4-a716-446655440000");
-//    private final UUID MY_UUID = UUID.fromString("fa87c0d0-afac-11de-8a39-0800200c9a66");
 
     private int state = 0;
     private final int STATE_DISCONNECT = 0;
@@ -132,7 +132,6 @@ public class BluetoothSocketUtil {
     }
 
     private class ListenThread extends Thread{
-        private BluetoothServerSocket bluetoothServerSocket;
         private boolean listen = false;
         public ListenThread(){
             try {
@@ -147,7 +146,9 @@ public class BluetoothSocketUtil {
             Log.e(TAG, "开启设备连接监听"+listen+"/"+(state==STATE_DISCONNECT) );
             while (listen && state==STATE_DISCONNECT){
                 try {
-                    bluetoothSocket = bluetoothServerSocket.accept();
+                    if(bluetoothSocket==null){
+                        bluetoothSocket = bluetoothServerSocket.accept();
+                    }
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -158,11 +159,11 @@ public class BluetoothSocketUtil {
                         if(onBluetoothSocketWork!=null){onBluetoothSocketWork.onConnecting();}
                         inputStream = bluetoothSocket.getInputStream();
                         outputStream = bluetoothSocket.getOutputStream();
-                        state = STATE_CONNECTED;
-                        isConnectedDevice = true;
                         nowDevice = bluetoothSocket.getRemoteDevice();
                         receiveDataThread = new ReceiveDataThread();
                         receiveDataThread.start();  // 开启读数据线程
+                        state = STATE_CONNECTED;
+                        isConnectedDevice = true;
 
                         if(onBluetoothSocketWork!=null){onBluetoothSocketWork.onConnected(nowDevice.getName());}
                         EventMsg msg = new EventMsg();
@@ -179,9 +180,9 @@ public class BluetoothSocketUtil {
         public void cancel(){
             listen = false;
             try {
-                if(bluetoothServerSocket!=null){
+                if (bluetoothServerSocket != null) {
                     bluetoothServerSocket.close();
-                    bluetoothServerSocket=null;
+                    bluetoothServerSocket = null;
                 }
             } catch (Exception e) {
                 e.printStackTrace();
@@ -207,7 +208,6 @@ public class BluetoothSocketUtil {
                     nowDevice = device;
                     receiveDataThread = new ReceiveDataThread();
                     receiveDataThread.start();  // 开启读数据线程
-
                     if(onBluetoothSocketWork!=null){onBluetoothSocketWork.onConnected(device.getName());}
                     EventMsg msg = new EventMsg();
                     msg.msgType = EventMsg.CONNECT_DEVICE;
@@ -361,11 +361,12 @@ public class BluetoothSocketUtil {
                     Log.e(TAG, "解析标识头 head: "+head+" 文件数据长度："+file_length);
 
                     file_bytes_baos.write(data_bytes,13,data_bytes.length-13);  // 存储标识以外的文件数据
-                    // 如果文本数据的话则只有一波，这时要判断收到的数据总长度是否文件数据长度+标识头数据长度
+                    // 如果是文本数据的话则只有一波，这时要判断收到的数据总长度是否文件数据长度+标识头数据长度
                     if(data_bytes.length==file_length+13){
                         parseData();
                     }
                 }else {
+                    // 没接收到标识头的数据直接舍弃
                     Log.e(TAG, "receiveData: 没有头"+data_str );
                 }
             }catch (Exception e){
@@ -473,6 +474,10 @@ public class BluetoothSocketUtil {
             if(bluetoothSocket!=null){
                 bluetoothSocket.close();
                 bluetoothSocket = null;
+            }
+            if(bluetoothServerSocket!=null){
+                bluetoothServerSocket.close();
+                bluetoothServerSocket=null;
             }
             if(onBluetoothSocketWork!=null){onBluetoothSocketWork.onDisconnect();}
             state = STATE_DISCONNECT;

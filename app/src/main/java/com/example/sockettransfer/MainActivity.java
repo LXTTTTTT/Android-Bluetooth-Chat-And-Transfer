@@ -136,13 +136,14 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // 发送文件，这里我写死了发送
+        // 发送文件，这里我写死了发送固定地址的文件，自行修改或按需求处理
         send_file.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 if(!checkFilePermission()){return;}
 //                String path = "/storage/emulated/0/DCIM/Camera/c13f2a8ca5b96fd11a3398d21e95d6e.jpg";
-                String path = "/storage/emulated/0/DCIM/Camera/IMG_20220805_150334.jpg";
+//                String path = "/storage/emulated/0/DCIM/Camera/IMG_20220805_150334.jpg";
+                String path = "/storage/emulated/0/DCIM/Camera/IMG_20210228_155041.jpg";
                 BluetoothSocketUtil.getInstance().send_file(path);
             }
         });
